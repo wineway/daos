@@ -430,6 +430,7 @@ def scons():
             Exit('stdatomic.h is required to compile DAOS, update your compiler or distro version')
         config.Finish()
 
+    deps_env.Tool('compilation_db')
     # Define and load the components.  This will add more values to opt.
     prereqs = PreReqComponent(deps_env, opts)
     # Now save the daos.conf file before attempting to build anything.  This means that options
@@ -443,7 +444,7 @@ def scons():
         print('Exiting because --build-deps=only was set')
         Exit(0)
 
-    env = deps_env.Clone(tools=['extra', 'textfile', 'daos_builder', 'compiler_setup'])
+    env = deps_env.Clone(tools=['compilation_db', 'extra', 'textfile', 'daos_builder', 'compiler_setup'])
 
     if not GetOption('help'):
         if prereqs.check_component('valgrind_devel'):
@@ -470,6 +471,8 @@ def scons():
     args = GetOption('analyze_stack')
     if args is not None:
         env.Tool('stack_analyzer', daos_prefix=build_prefix, comp_prefix=comp_prefix, args=args)
+
+    env.Alias("compiledb", env.CompilationDatabase("compile_commands.json"))
 
     Export('env', 'base_env', 'base_env_mpi', 'prereqs', 'conf_dir')
 
