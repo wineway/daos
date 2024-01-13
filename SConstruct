@@ -171,6 +171,13 @@ def update_rpm_version(version, tag):
     return True
 
 
+def get_scons_version(env):
+    """Get the version of Scons"""
+    # pylint: disable=import-outside-toplevel,no-name-in-module,protected-access
+    from SCons import __version__ as scons_raw_version
+    return env._get_major_minor_revision(scons_raw_version)
+
+
 def check_for_release_target():  # pylint: disable=too-many-locals
     """Update GitHub for release tag"""
     if COMMAND_LINE_TARGETS == ['release']:
@@ -430,7 +437,11 @@ def scons():
             Exit('stdatomic.h is required to compile DAOS, update your compiler or distro version')
         config.Finish()
 
-    deps_env.Tool('compilation_db')
+    scons_ver = get_scons_version(deps_env)
+    if scons_ver >= (4, 0, 0):
+        deps_env.Tool("compilation_db")
+        deps_env.Alias("compiledb", deps_env.CompilationDatabase()) #pylint: disable=no-member
+
     # Define and load the components.  This will add more values to opt.
     prereqs = PreReqComponent(deps_env, opts)
     # Now save the daos.conf file before attempting to build anything.  This means that options
@@ -444,7 +455,7 @@ def scons():
         print('Exiting because --build-deps=only was set')
         Exit(0)
 
-    env = deps_env.Clone(tools=['compilation_db', 'extra', 'textfile', 'daos_builder', 'compiler_setup'])
+    env = deps_env.Clone(tools=['extra', 'textfile', 'daos_builder', 'compiler_setup'])
 
     if not GetOption('help'):
         if prereqs.check_component('valgrind_devel'):
@@ -471,8 +482,6 @@ def scons():
     args = GetOption('analyze_stack')
     if args is not None:
         env.Tool('stack_analyzer', daos_prefix=build_prefix, comp_prefix=comp_prefix, args=args)
-
-    env.Alias("compiledb", env.CompilationDatabase("compile_commands.json"))
 
     Export('env', 'base_env', 'base_env_mpi', 'prereqs', 'conf_dir')
 
